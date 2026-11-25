@@ -63,6 +63,7 @@ def test_attached_email_is_not_main_body():
     result = parse_eml(raw)
     assert "Hello team" in result.body
     assert "Nested secret" not in result.body
+    assert "(attached email)" in result.attachments
 
 def test_mime_part_limit():
     raw = (b"Content-Type: multipart/mixed; boundary=x\r\n\r\n" +

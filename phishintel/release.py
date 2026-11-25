@@ -93,8 +93,8 @@ def metrics(labels, scores, threshold, recognised):
             "recall": float(recall_score(labels, predictions, zero_division=0)),
             "roc_auc": float(roc_auc_score(labels, scores)),
             "average_precision": float(average_precision_score(labels, scores)),
-            "unsafe_clearance_rate": sum(y == 1 and known and s <= 1-threshold for y,s,known in zip(labels,scores,recognised))/counts[1],
-            "review_rate": sum(not known or 1-threshold < s < threshold for s,known in zip(scores,recognised))/len(labels)}
+            "unsafe_clearance_rate": float(sum(y == 1 and known and s <= 1-threshold for y,s,known in zip(labels,scores,recognised))/counts[1]),
+            "review_rate": float(sum(not known or 1-threshold < s < threshold for s,known in zip(scores,recognised))/len(labels))}
 
 def gate(m):
     return (isinstance(m, dict)

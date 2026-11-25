@@ -75,11 +75,11 @@ def parse_eml(raw: bytes) -> Email:
         count += 1
         if count > MAX_PARTS or depth > MAX_DEPTH:
             raise ValueError("Email MIME complexity exceeds limits.")
-        if part.get_content_disposition() == "attachment" or part.get_filename():
-            attachments.append(str(part.get_filename() or "(unnamed)")[:200])
-            continue
         if part.get_content_type() == "message/rfc822":
             attachments.append("(attached email)")
+            continue
+        if part.get_content_disposition() == "attachment" or part.get_filename():
+            attachments.append(str(part.get_filename() or "(unnamed)")[:200])
             continue
         if part.is_multipart():
             stack.extend((child, depth + 1) for child in reversed(list(part.iter_parts())))

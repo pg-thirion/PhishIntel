@@ -91,7 +91,7 @@ if submitted:
     st.download_button("Download metadata-only JSON summary", json.dumps(summary(result, evidence, decision), indent=2), "phishintel-summary.json", "application/json")
     if findings:
         st.dataframe(findings, hide_index=True, use_container_width=True)
-    else:
+    elif not evidence["findings"]:
         st.info("No configured indicators triggered. This is not proof of safety.")
     st.subheader("Recommended analyst actions")
     if decision["priority"] != "routine":
