@@ -1,0 +1,33 @@
+text,label
+"Your mailbox storage is full. Verify your account immediately to avoid suspension.",phishing
+"Urgent security alert: confirm your password to restore access.",phishing
+"Your account has been locked. Follow the verification link to unlock it.",phishing
+"Payment failed. Update your credit card details to avoid cancellation.",phishing
+"Unexpected login detected. Confirm your identity using the secure portal.",phishing
+"Your parcel is being held. Pay the outstanding delivery fee today.",phishing
+"Payroll update required. Submit your bank details through the attached form.",phishing
+"Your password expires today. Click the link to retain your current password.",phishing
+"Action required: open the attached invoice and enable macros.",phishing
+"Confidential request from management: purchase gift cards immediately.",phishing
+"Your refund is ready. Verify your banking information to claim it.",phishing
+"Final notice: validate your credentials before your account is terminated.",phishing
+"Security verification pending. Enter your login details to prevent interruption.",phishing
+"Unusual activity: sign in through this link to confirm your account.",phishing
+"Your subscription renewal has failed. Confirm payment information now.",phishing
+"Congratulations: claim your prize by submitting personal information.",phishing
+"The weekly team meeting has moved to Thursday. See you in the boardroom.",legitimate
+"Please review the project notes before our planning session next week.",legitimate
+"Thanks for attending the workshop. The slides are on our shared drive.",legitimate
+"Your order has shipped. The estimated arrival date is Friday.",legitimate
+"The office will close early on Friday for scheduled maintenance.",legitimate
+"Attached are the minutes from yesterday's committee meeting.",legitimate
+"Please let me know which dates work for the upcoming training session.",legitimate
+"Your monthly statement is available in the usual banking application.",legitimate
+"Reminder: use the company helpdesk for technical support requests.",legitimate
+"The invoice for last month's services is attached for your records.",legitimate
+"Here is the revised budget spreadsheet we discussed this morning.",legitimate
+"Your appointment is confirmed for Monday at the usual location.",legitimate
+"Please send feedback on the draft report by Wednesday afternoon.",legitimate
+"The security team will perform scheduled updates this weekend.",legitimate
+"We received your application and will contact you after the review.",legitimate
+"The library has extended its opening hours for the examination period.",legitimate
