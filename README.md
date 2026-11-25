@@ -55,3 +55,16 @@ The heuristic observations are intentionally separate from the model. Authentica
 ## Limitations and roadmap
 
 This is an English-language experimental tool, not a production filter. It does not resolve URLs, detect all obfuscations, scan files, verify authentication cryptographically or inspect encrypted archives. There is no live threat intelligence, real-world benchmark, automatic quarantine or multi-user access control. Next steps include representative licensed corpora, campaign/time-aware validation, probability calibration, multilingual coverage and an isolated gateway integration.
+
+## Public research dataset option
+
+The [Phishing-Email-Detection-Dataset](https://doi.org/10.5281/zenodo.17314806) by Alhuzali, Alloqmani, Aljabri and Alharbi (2025) provides a merged and balanced corpus. Review its CC BY 4.0 licence and underlying corpus terms before use. The balanced CSV is approximately 359 MB. Download it manually to data/private/ and convert its body/label schema:
+
+```bash
+python scripts/prepare_dataset.py data/private/Balanced_Dataset.csv data/private/messages.csv
+python -m phishintel.evaluate data/private/messages.csv
+```
+
+Then set PHISHINTEL_DATA to data/private/messages.csv and launch the app. This conversion discards source grouping because the published two-column format lacks campaign IDs. Its random holdout is a preliminary benchmark only. No external corpus is redistributed in this repository, and no results on that corpus are claimed.
+
+GitHub Actions runs the unit tests and synthetic smoke evaluation on Python 3.11 and 3.12.
