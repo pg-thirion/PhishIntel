@@ -68,3 +68,20 @@ python -m phishintel.evaluate data/private/messages.csv
 Then set PHISHINTEL_DATA to data/private/messages.csv and launch the app. This conversion discards source grouping because the published two-column format lacks campaign IDs. Its random holdout is a preliminary benchmark only. No external corpus is redistributed in this repository, and no results on that corpus are claimed.
 
 GitHub Actions runs the unit tests and synthetic smoke evaluation on Python 3.11 and 3.12.
+
+## Production inference (separate from the demo UI)
+
+The API will not train on startup or accept the bundled demonstration model. It requires a release produced offline using a labelled, group-aware dataset, an independently provisioned SHA-256 digest and an API key of at least 32 characters. The digest verifies integrity against a trusted deployment value, not the provenance of an untrusted artifact.
+
+```bash
+python -m phishintel.release data/private/grouped.csv artifacts/model.json --dataset-id "approved-corpus-v1"
+# Record the emitted SHA-256 in protected deployment configuration.
+# Set PHISHINTEL_MODEL, PHISHINTEL_MODEL_SHA256 and PHISHINTEL_API_KEY.
+python -m uvicorn phishintel.api:app --host 127.0.0.1 --port 8080 --no-access-log
+```
+
+The release gate uses campaign-disjoint train, validation and test partitions, each with at least 100 samples per class. Default acceptance policy: precision >= 90%, recall >= 80%, ROC AUC >= 90%, phishing incorrectly cleared <= 5%. These are proposed engineering minimums, not measured results or an organisation-approved risk policy. Freeze the threshold before independent evaluation; do not repeatedly tune against the held-out test set. Uncalibrated scores must not be treated as probabilities. The public two-column corpus converter does not supply group IDs and therefore cannot alone qualify a production release.
+
+POST /v1/analyse accepts UTF-8 text/plain or message/rfc822, with Authorization: Bearer <key>. Maximum request size 1 MiB. Responses contain model fingerprint, verdict, signed feature contributions and independent security indicators. No raw email logging, remote link access or attachment execution. Health endpoints are /healthz and /readyz. The API is designed for a private network behind an authenticated TLS gateway with per-client rate limiting.
+
+See [deployment runbook](docs/production.md) and [security policy](SECURITY.md). The Streamlit UI remains a local demonstration interface; do not expose it as a production multi-user service.

@@ -1,5 +1,7 @@
 """TF-IDF and logistic regression with exact additive log-odds explanations."""
 import csv
+import hashlib
+import unicodedata
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -11,6 +13,7 @@ LABELS = {"phishing": 1, "legitimate": 0}
 def load_data(path):
     # Reject contradictory duplicates and avoid exact duplicates leaking across splits.
     rows = {}
+    csv.field_size_limit(2_000_000)
     with open(path, encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         if not {"text", "label"}.issubset(reader.fieldnames or []):
@@ -21,10 +24,12 @@ def load_data(path):
             group = (row.get("group") or "").strip()
             if not body or label not in LABELS:
                 raise ValueError("Every row needs text and a phishing or legitimate label.")
-            key = " ".join(body.casefold().split())
+            key = hashlib.sha256(" ".join(unicodedata.normalize("NFKC", body).casefold().split()).encode()).hexdigest()
             if key in rows:
                 if rows[key][1] != LABELS[label]:
                     raise ValueError("Duplicate message has conflicting labels.")
+                if rows[key][2] != group:
+                    raise ValueError("Duplicate message occurs in different groups; reconcile groups before training.")
                 continue
             rows[key] = (body, LABELS[label], group)
     values = list(rows.values())

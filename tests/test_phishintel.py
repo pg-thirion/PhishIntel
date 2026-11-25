@@ -54,3 +54,18 @@ def test_evaluation():
     assert report["train_count"] + report["test_count"] == 32
     assert 0 <= report["roc_auc"] <= 1
     assert sum(map(sum, report["confusion_matrix"])) == report["test_count"]
+
+def test_attached_email_is_not_main_body():
+    raw = (b"Subject: outer\r\nContent-Type: multipart/mixed; boundary=x\r\n\r\n"
+           b"--x\r\nContent-Type: text/plain\r\n\r\nHello team\r\n"
+           b"--x\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment\r\n\r\n"
+           b"Subject: inner\r\n\r\nNested secret\r\n--x--\r\n")
+    result = parse_eml(raw)
+    assert "Hello team" in result.body
+    assert "Nested secret" not in result.body
+
+def test_mime_part_limit():
+    raw = (b"Content-Type: multipart/mixed; boundary=x\r\n\r\n" +
+           b"--x\r\nContent-Type: text/plain\r\n\r\nhello\r\n"*201 + b"--x--\r\n")
+    with pytest.raises(ValueError):
+        parse_eml(raw)

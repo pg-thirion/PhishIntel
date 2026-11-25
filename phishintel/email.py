@@ -7,9 +7,12 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit
 import ipaddress
 import re
+import unicodedata
 
 MAX_BYTES = 1024 * 1024
 MAX_TEXT = 100_000
+MAX_PARTS = 200
+MAX_DEPTH = 20
 URL = re.compile(r'https?://[^\s<>"\x27]+', re.I)
 
 class PlainHTML(HTMLParser):
@@ -53,13 +56,30 @@ class Email:
 def parse_eml(raw: bytes) -> Email:
     if len(raw) > MAX_BYTES:
         raise ValueError("Email exceeds the 1 MiB analysis limit.")
-    message = BytesParser(policy=policy.default).parsebytes(raw)
+    if not raw.strip():
+        raise ValueError("Empty email.")
+    try:
+        message = BytesParser(policy=policy.default).parsebytes(raw)
+    except (RecursionError, ValueError) as exc:
+        raise ValueError("Malformed or excessively nested email.") from exc
     plain, html, links, attachments = [], [], [], []
-    for part in message.walk():
+    stack = [(message, 0)]
+    count = 0
+    while stack:
+        part, depth = stack.pop()
+        count += 1
+        if count > MAX_PARTS or depth > MAX_DEPTH:
+            raise ValueError("Email MIME complexity exceeds limits.")
         if part.get_content_disposition() == "attachment" or part.get_filename():
             attachments.append(str(part.get_filename() or "(unnamed)")[:200])
             continue
-        if part.is_multipart() or part.get_content_type() not in {"text/plain", "text/html"}:
+        if part.get_content_type() == "message/rfc822":
+            attachments.append("(attached email)")
+            continue
+        if part.is_multipart():
+            stack.extend((child, depth + 1) for child in reversed(list(part.iter_parts())))
+            continue
+        if part.get_content_type() not in {"text/plain", "text/html"}:
             continue
         try:
             content = part.get_content()
@@ -86,9 +106,13 @@ def parse_eml(raw: bytes) -> Email:
                  " ".join(str(h) for h in message.get_all("Authentication-Results", []))[:2000])
 
 def domain(address):
-    return parseaddr(address)[1].rpartition("@")[2].lower().rstrip(".")
+    try:
+        return parseaddr(address)[1].rpartition("@")[2].lower().rstrip(".")
+    except (ValueError, IndexError):
+        return ""
 
 def defang(value):
+    value = "".join(c for c in value if unicodedata.category(c) not in {"Cc", "Cf"})[:250]
     return re.sub(r"\.", "[.]", re.sub(r"^http", "hxxp", value, flags=re.I))
 
 def indicators(email: Email):
@@ -123,8 +147,10 @@ def indicators(email: Email):
         except ValueError:
             add("review", "Malformed URL", "URL could not be parsed safely.")
     for name in email.attachments:
-        if name.lower().endswith((".exe", ".scr", ".js", ".vbs", ".lnk", ".iso", ".hta", ".bat", ".cmd", ".ps1", ".docm", ".xlsm")):
-            add("review", "Potentially risky attachment type", name[:200])
+        if len(out) >= 60:
+            break
+        if unicodedata.normalize("NFKC", name).rstrip(" .").lower().endswith((".exe", ".scr", ".js", ".vbs", ".lnk", ".iso", ".hta", ".bat", ".cmd", ".ps1", ".docm", ".xlsm")):
+            add("review", "Potentially risky attachment type", defang(name))
     if re.search(r"\b(?:spf|dkim|dmarc)\s*=\s*(?:fail|softfail|permerror)\b", email.authentication, re.I):
         add("review", "Reported authentication failure", "Unverified Authentication-Results header; confirm with the receiving mail server.")
     return out

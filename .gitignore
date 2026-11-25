@@ -5,3 +5,10 @@ __pycache__/
 *.eml
 data/private/
 reports/
+artifacts/
+*.joblib
+*.pkl
+.env
+.env.*
+.coverage
+htmlcov/

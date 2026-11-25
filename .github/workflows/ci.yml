@@ -16,6 +16,15 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - run: python -m pip install -r requirements.txt
-      - run: python -m pytest -q
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q --cov=phishintel --cov-report=term-missing
       - run: python -m phishintel.evaluate
+      - run: python -m compileall -q phishintel app.py
+      - run: bandit -r phishintel -lll
+      - run: pip-audit
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t phishintel:ci .
+      - run: docker run --rm --entrypoint id phishintel:ci -u | grep -x 10001
