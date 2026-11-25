@@ -17,7 +17,7 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pytest -q --cov=phishintel --cov-report=term-missing
+      - run: python -m pytest -q --cov=phishintel --cov-report=term-missing --cov-fail-under=80
       - run: python -m phishintel.evaluate
       - run: python -m compileall -q phishintel app.py
       - run: bandit -r phishintel -lll

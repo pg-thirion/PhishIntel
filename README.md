@@ -93,3 +93,9 @@ The API and local UI now share a deterministic evidence layer, independent of th
 Set PHISHINTEL_POLICY to a local JSON file with optional watched and protected arrays (see config/policy.example.json). Entries match whole domains or subdomains. The lookalike check is deliberately limited to a single insertion, deletion or substitution. Do not put real customer indicators into the public repository.
 
 API responses include defanged domain inventory, bounded link and attachment counts, independent rule codes, analyst priority, and a metadata-only summary excluding raw messages, domains and explanation terms. The Streamlit UI supports downloading that summary. No content is fetched, executed, or automatically cleared. Exported metadata can still be sensitive in context; apply your retention rules.
+
+## Regression testing
+
+Run the full suite using `python -m pip install -r requirements-dev.txt` followed by `python -m pytest -q --cov=phishintel --cov-report=term-missing --cov-fail-under=80`. CI also includes Streamlit application smoke checks, static compilation, dependency scanning, Bandit and a non-root container build check. Streamlit smoke checks are skipped in core-only environments without Streamlit.
+
+The extended evidence rules and backend suite were locally exercised with Python 3.13.5, scikit-learn 1.8.0, FastAPI 0.128.2 and HTTPX 0.28.1: 52 tests passed, 86% backend statement coverage. GitHub Actions execution, Streamlit smoke checks and Docker build were not verified locally. Synthetic data tests establish software behaviour, not real-world model performance. On the bundled eight-message synthetic holdout the default threshold detected none of the four phishing messages; do not deploy the demo model.
