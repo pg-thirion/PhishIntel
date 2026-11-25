@@ -1,4 +1,6 @@
 import os
+import json
+from phishintel.intel import IntelPolicy, enrich, triage, summary
 from pathlib import Path
 import streamlit as st
 from phishintel.email import Email, parse_eml, indicators, MAX_TEXT
@@ -71,12 +73,28 @@ if submitted:
     st.caption("Contributions are TF-IDF values multiplied by logistic regression coefficients, in log-odds units.")
     st.subheader("Independent security observations")
     findings = indicators(email)
+    try:
+        configured = os.environ.get("PHISHINTEL_POLICY")
+        policy = IntelPolicy.load(configured) if configured else IntelPolicy()
+    except (ValueError, OSError):
+        st.error("Invalid configured evidence policy.")
+        st.stop()
+    evidence = enrich(email, policy)
+    decision = triage(result, evidence, findings)
+    st.metric("Analyst priority", decision["priority"].title())
+    st.caption("Heuristics affect analyst priority, not the ML score.")
+    if evidence["findings"]:
+        st.dataframe(evidence["findings"], hide_index=True, use_container_width=True)
+    with st.expander("Defanged domain inventory"):
+        st.text("\n".join(evidence["domains"]))
+        st.write(f'{evidence["link_count"]} unique links / {evidence["attachment_count"]} attachments')
+    st.download_button("Download metadata-only JSON summary", json.dumps(summary(result, evidence, decision), indent=2), "phishintel-summary.json", "application/json")
     if findings:
         st.dataframe(findings, hide_index=True, use_container_width=True)
     else:
         st.info("No configured indicators triggered. This is not proof of safety.")
     st.subheader("Recommended analyst actions")
-    if result["verdict"] != "Likely legitimate" or findings:
+    if decision["priority"] != "routine":
         st.write("Do not follow links or open attachments. Verify the request through a known channel and escalate suspicious messages to the security team.")
     else:
         st.write("Verify unexpected requests independently. A low score is not a clearance decision.")

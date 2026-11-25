@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 import ipaddress
 import re
 import unicodedata
+from .intel import html_signals
 
 MAX_BYTES = 1024 * 1024
 MAX_TEXT = 100_000
@@ -49,6 +50,9 @@ class Email:
     links: tuple[str, ...] = ()
     attachments: tuple[str, ...] = ()
     authentication: str = ""
+    return_path: str = ""
+    from_count: int = 1
+    html_codes: tuple[str, ...] = ()
 
     def model_text(self):
         return (self.subject + "\n" + self.body)[:MAX_TEXT]
@@ -63,6 +67,7 @@ def parse_eml(raw: bytes) -> Email:
     except (RecursionError, ValueError) as exc:
         raise ValueError("Malformed or excessively nested email.") from exc
     plain, html, links, attachments = [], [], [], []
+    html_codes = set()
     stack = [(message, 0)]
     count = 0
     while stack:
@@ -91,6 +96,7 @@ def parse_eml(raw: bytes) -> Email:
         if part.get_content_type() == "text/plain":
             plain.append(content)
         else:
+            html_codes.update(html_signals(content))
             parser = PlainHTML()
             parser.feed(content)
             parser.close()
@@ -103,7 +109,9 @@ def parse_eml(raw: bytes) -> Email:
                  str(message.get("Reply-To", ""))[:500],
                  body, tuple(dict.fromkeys(links))[:200],
                  tuple(attachments)[:100],
-                 " ".join(str(h) for h in message.get_all("Authentication-Results", []))[:2000])
+                 " ".join(str(h) for h in message.get_all("Authentication-Results", []))[:2000],
+                 str(message.get("Return-Path", ""))[:500],
+                 len(message.get_all("From", [])), tuple(sorted(html_codes)))
 
 def domain(address):
     try:

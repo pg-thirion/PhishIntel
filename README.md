@@ -85,3 +85,11 @@ The release gate uses campaign-disjoint train, validation and test partitions, e
 POST /v1/analyse accepts UTF-8 text/plain or message/rfc822, with Authorization: Bearer <key>. Maximum request size 1 MiB. Responses contain model fingerprint, verdict, signed feature contributions and independent security indicators. No raw email logging, remote link access or attachment execution. Health endpoints are /healthz and /readyz. The API is designed for a private network behind an authenticated TLS gateway with per-client rate limiting.
 
 See [deployment runbook](docs/production.md) and [security policy](SECURITY.md). The Streamlit UI remains a local demonstration interface; do not expose it as a production multi-user service.
+
+## Extended offline evidence and triage
+
+The API and local UI now share a deterministic evidence layer, independent of the model score. It detects HTML forms/password fields/remote images/tracking pixels/active or hidden HTML/misleading anchor text; missing or duplicate sender headers and envelope mismatch; shortened URLs, deep subdomains, unusual ports, encoded authorities and redirect parameters; policy watchlist matches and one-edit protected-domain lookalikes; bidirectional filename controls, deceptive double extensions, archives, HTML and macro documents, attached messages; urgency, credential, banking and gift-card language. These are heuristic observations, not verified attacks.
+
+Set PHISHINTEL_POLICY to a local JSON file with optional watched and protected arrays (see config/policy.example.json). Entries match whole domains or subdomains. The lookalike check is deliberately limited to a single insertion, deletion or substitution. Do not put real customer indicators into the public repository.
+
+API responses include defanged domain inventory, bounded link and attachment counts, independent rule codes, analyst priority, and a metadata-only summary excluding raw messages, domains and explanation terms. The Streamlit UI supports downloading that summary. No content is fetched, executed, or automatically cleared. Exported metadata can still be sensitive in context; apply your retention rules.

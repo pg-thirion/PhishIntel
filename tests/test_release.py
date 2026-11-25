@@ -63,6 +63,8 @@ def test_api(artifact, monkeypatch):
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store"
         assert response.json()["model_sha256"] == artifact[1]
+        assert response.json()["triage"]["automatic_clearance"] is False
+        assert "credential_request" in response.json()["summary"]["indicator_codes"]
         assert client.post("/v1/analyse", content=b"x"*(1024*1024+1), headers=headers).status_code == 413
         assert client.post("/v1/analyse", content=b"\xff", headers=headers).status_code == 422
         assert client.post("/v1/analyse", content=" ", headers=headers).status_code == 422

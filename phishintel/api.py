@@ -12,6 +12,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from .email import Email, parse_eml, indicators, MAX_BYTES, MAX_TEXT
 from .release import load_release
+from .intel import IntelPolicy, enrich, triage, summary
 
 def create_app():
     @asynccontextmanager
@@ -23,6 +24,8 @@ def create_app():
         app.state.model = load_release(Path(os.environ["PHISHINTEL_MODEL"]),
                                        os.environ["PHISHINTEL_MODEL_SHA256"])
         app.state.slots = asyncio.Semaphore(4)
+        policy_path = os.environ.get("PHISHINTEL_POLICY")
+        app.state.policy = IntelPolicy.load(policy_path) if policy_path else IntelPolicy()
         yield
 
     app = FastAPI(title="PhishIntel", version="1.0.0", lifespan=lifespan,
@@ -84,11 +87,14 @@ def create_app():
                     email = Email(body=body)
                 result = request.app.state.model.analyse(email.model_text())
                 findings = indicators(email)
+                evidence = enrich(email, request.app.state.policy)
+                decision = triage(result, evidence, findings)
                 return {"request_id": secrets.token_hex(12),
                         "model_sha256": request.app.state.model.fingerprint,
                         "score_type": "uncalibrated_model_score",
-                        **result, "indicators": findings,
-                        "recommendation": "review" if findings or result["verdict"] != "Likely legitimate"
+                        **result, "indicators": findings, "evidence": evidence,
+                        "triage": decision, "summary": summary(result, evidence, decision),
+                        "recommendation": "review" if decision["priority"] != "routine"
                         else "verify independently"}
             try:
                 return JSONResponse(await run_in_threadpool(run))
