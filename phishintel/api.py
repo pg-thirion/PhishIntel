@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import hmac
+from email.errors import MessageError
 import os
 from pathlib import Path
 import secrets
@@ -91,7 +92,7 @@ def create_app():
                         else "verify independently"}
             try:
                 return JSONResponse(await run_in_threadpool(run))
-            except (ValueError, RecursionError, UnicodeError, LookupError):
+            except (ValueError, RecursionError, UnicodeError, LookupError, MessageError):
                 raise HTTPException(422, "Invalid or unsupported email")
         finally:
             slots.release()

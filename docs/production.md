@@ -22,3 +22,5 @@ Monitor request counts, latency, failures, 429s, score distribution and drift wi
 ## Threat boundaries
 
 Inputs are hostile. MIME limits, authenticated access, bounded concurrency, streamed size checks, non-executable serialization, no remote fetching and a non-root container reduce exposure. They do not replace sandboxing, network controls, resource limits or independent security testing. Headers such as Authentication-Results are untrusted unless validated by the receiving gateway. Attachment extensions and URL indicators are heuristics, not malware scanning. A low model score does not establish safety.
+
+The release records the input CSV SHA-256. Acceptance metrics count unrecognised vocabulary as review, matching serving behaviour. The training fixture in CI is synthetic and is not evidence of real-world accuracy.

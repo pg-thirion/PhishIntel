@@ -85,16 +85,16 @@ def load_release(path, expected_sha256):
     except (KeyError, TypeError, OverflowError, RecursionError) as exc:
         raise ValueError("Invalid release structure") from exc
 
-def metrics(labels, scores, threshold):
-    predictions = [int(s >= threshold) for s in scores]
+def metrics(labels, scores, threshold, recognised):
+    predictions = [int(known and s >= threshold) for s,known in zip(scores,recognised)]
     counts = Counter(labels)
     return {"legitimate": counts[0], "phishing": counts[1],
             "precision": float(precision_score(labels, predictions, zero_division=0)),
             "recall": float(recall_score(labels, predictions, zero_division=0)),
             "roc_auc": float(roc_auc_score(labels, scores)),
             "average_precision": float(average_precision_score(labels, scores)),
-            "unsafe_clearance_rate": sum(y == 1 and s <= 1-threshold for y,s in zip(labels,scores))/counts[1],
-            "review_rate": sum(1-threshold < s < threshold for s in scores)/len(labels)}
+            "unsafe_clearance_rate": sum(y == 1 and known and s <= 1-threshold for y,s,known in zip(labels,scores,recognised))/counts[1],
+            "review_rate": sum(not known or 1-threshold < s < threshold for s,known in zip(scores,recognised))/len(labels)}
 
 def gate(m):
     return (isinstance(m, dict)
@@ -108,7 +108,13 @@ def gate(m):
 def train_release(source, target, dataset_id, threshold=.65):
     if not dataset_id.strip() or not .5 <= threshold <= .99:
         raise ValueError("Dataset provenance and a valid threshold are required")
+    def file_digest():
+        with open(source, "rb") as handle:
+            return hashlib.file_digest(handle, "sha256").hexdigest()
+    source_hash = file_digest()
     texts, labels, groups = load_data(source)
+    if file_digest() != source_hash:
+        raise ValueError("Dataset changed during training input load")
     if not all(groups) or len(set(groups)) < 5:
         raise ValueError("At least five independent campaign/thread groups are required")
     # Independent partitions, chosen without inspecting model performance.
@@ -125,8 +131,11 @@ def train_release(source, target, dataset_id, threshold=.65):
         raise ValueError("Each partition requires at least 100 examples per class")
     model = fit_model([texts[i] for i in train], [labels[i] for i in train])
     def evaluate(indices):
+        inputs = [texts[i] for i in indices]
+        vectors = model.named_steps["tfidf"].transform(inputs)
+        recognised = vectors.getnnz(axis=1) > 0
         return metrics([labels[i] for i in indices],
-                       model.predict_proba([texts[i] for i in indices])[:, 1], threshold)
+                       model.named_steps["classifier"].predict_proba(vectors)[:, 1], threshold, recognised)
     val = evaluate(validation)
     if not gate(val):
         raise ValueError("Validation gate failed: " + json.dumps(val))
@@ -135,7 +144,7 @@ def train_release(source, target, dataset_id, threshold=.65):
         raise ValueError("Independent test gate failed: " + json.dumps(test_result))
     v, c = model.named_steps["tfidf"], model.named_steps["classifier"]
     payload = {"schema": SCHEMA, "dataset_id": dataset_id, "threshold": threshold,
-               "train_count": len(train), "validation_metrics": val, "test_metrics": test_result,
+               "train_count": len(train), "dataset_sha256": source_hash, "validation_metrics": val, "test_metrics": test_result,
                "terms": v.get_feature_names_out().tolist(), "idf": v.idf_.tolist(),
                "weights": c.coef_[0].tolist(), "intercept": float(c.intercept_[0])}
     raw = json.dumps(payload, ensure_ascii=True, allow_nan=False, separators=(",", ":")).encode()

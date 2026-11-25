@@ -72,3 +72,29 @@ def test_api_refuses_weak_key(monkeypatch):
     with pytest.raises(RuntimeError):
         with TestClient(create_app()):
             pass
+
+def test_full_training_release(tmp_path):
+    import csv
+    path = tmp_path / "synthetic_grouped.csv"
+    with path.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["text", "label", "group"])
+        # Artificially separable fixture, not a phishing benchmark.
+        for group in range(10):
+            for i in range(100):
+                writer.writerow([f"verify password credential urgent account verify password unique {group} {i}", "phishing", f"g{group}"])
+                writer.writerow([f"meeting lunch project planning colleague meeting lunch unique {group} {i}", "legitimate", f"g{group}"])
+    target = tmp_path / "release.json"
+    report = train_release(path, target, "synthetic-test-fixture")
+    released = load_release(target, report["sha256"])
+    assert released.analyse("verify password credential urgent")["score"] > .65
+    assert released.analyse("meeting lunch project planning")["score"] < .35
+    assert released.analyse("zzxxvv")["verdict"] == "Insufficient evidence"
+    assert len(json.loads(target.read_bytes())["dataset_sha256"]) == 64
+
+def test_unknown_features_not_counted_as_clearance_or_detection():
+    from phishintel.release import metrics
+    result = metrics([0, 1], [.1, .1], .65, [True, False])
+    assert result["unsafe_clearance_rate"] == 0
+    assert result["review_rate"] == .5
+    assert result["recall"] == 0
